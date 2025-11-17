@@ -239,7 +239,7 @@ export default function Home() {
             fontWeight: '700',
             letterSpacing: '-0.02em'
           }}>
-            Crop Type & Yield Analyzer
+            Crop Type & Yield prediction
           </h1>
           <p style={{ 
             color: COLORS.text.secondary,
