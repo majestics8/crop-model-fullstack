@@ -43,8 +43,41 @@ const BORDER_RADIUS = {
   large: '16px'
 }
 
+// Yield prediction data based on crop type
+const YIELD_DATA = {
+  "Canola": {
+    averageYield: "2.0-3.0 tons/ha",
+    optimalConditions: "Cool temperatures, well-drained soil",
+    season: "Spring to Summer",
+    waterRequirements: "Moderate",
+    icon: "🟡"
+  },
+  "Drybean": {
+    averageYield: "1.5-2.5 tons/ha",
+    optimalConditions: "Warm climate, fertile soil",
+    season: "Summer",
+    waterRequirements: "Low to Moderate",
+    icon: "🟤"
+  },
+  "Lentil-Wheat": {
+    averageYield: "1.2-2.0 tons/ha",
+    optimalConditions: "Cool temperatures, rotational crop",
+    season: "Winter to Spring",
+    waterRequirements: "Low",
+    icon: "🌾"
+  },
+  "Wheat": {
+    averageYield: "3.0-4.5 tons/ha",
+    optimalConditions: "Temperate climate, fertile soil",
+    season: "Winter/Spring",
+    waterRequirements: "Moderate",
+    icon: "🌾"
+  }
+}
+
 export default function Home() {
   const [file, setFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
@@ -66,15 +99,35 @@ export default function Home() {
     setDragActive(false)
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0])
+      const selectedFile = e.dataTransfer.files[0]
+      setFile(selectedFile)
+      // Create image preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target.result)
+      }
+      reader.readAsDataURL(selectedFile)
     }
   }
 
   const handleChange = (e) => {
     e.preventDefault()
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
+      const selectedFile = e.target.files[0]
+      setFile(selectedFile)
+      // Create image preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target.result)
+      }
+      reader.readAsDataURL(selectedFile)
     }
+  }
+
+  const clearFile = () => {
+    setFile(null)
+    setImagePreview(null)
+    setResult(null)
   }
 
   const getPredictionColor = (label) => {
@@ -91,6 +144,16 @@ export default function Home() {
     if (lowerLabel.includes('healthy')) return '✅'
     if (lowerLabel.includes('disease') || lowerLabel.includes('infected')) return '⚠️'
     return '🔍'
+  }
+
+  const getYieldPrediction = (cropType) => {
+    return YIELD_DATA[cropType] || {
+      averageYield: "Data not available",
+      optimalConditions: "Information not available",
+      season: "N/A",
+      waterRequirements: "N/A",
+      icon: "❓"
+    }
   }
 
   async function handleSubmit(e) {
@@ -114,7 +177,12 @@ export default function Home() {
       if (data.error) {
         setResult({ error: data.error })
       } else {
-        setResult(data)
+        // Add yield prediction data to the result
+        const yieldData = getYieldPrediction(data.prediction_label)
+        setResult({
+          ...data,
+          yieldPrediction: yieldData
+        })
       }
       
     } catch (err) {
@@ -143,7 +211,7 @@ export default function Home() {
         borderRadius: BORDER_RADIUS.large,
         boxShadow: SHADOWS.large,
         padding: '40px',
-        maxWidth: '550px',
+        maxWidth: '700px',
         width: '100%',
         transition: 'all 0.3s ease-in-out',
         border: `1px solid rgba(46, 125, 50, 0.1)`
@@ -171,85 +239,189 @@ export default function Home() {
             fontWeight: '700',
             letterSpacing: '-0.02em'
           }}>
-            Crop Type Identifier
+            Crop Type & Yield Analyzer
           </h1>
           <p style={{ 
             color: COLORS.text.secondary,
             fontSize: '16px',
             lineHeight: '1.5'
           }}>
-            Upload an image of your crop to identify its type and get detailed information
+            Upload an image to identify crop type and get yield predictions with cultivation insights
           </p>
         </div>
 
         {/* Upload Section */}
         <form onSubmit={handleSubmit} style={{ marginBottom: '32px' }}>
-          <div 
-            style={{
-              border: `2px dashed ${dragActive ? COLORS.primary.main : COLORS.text.light}`,
-              borderRadius: BORDER_RADIUS.medium,
-              padding: '40px 20px',
-              textAlign: 'center',
-              backgroundColor: dragActive ? 'rgba(76, 175, 80, 0.05)' : COLORS.background.card,
-              transition: 'all 0.3s ease',
-              cursor: 'pointer',
-              marginBottom: '20px'
-            }}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📸</div>
-            <p style={{ 
-              color: COLORS.text.primary, 
-              fontWeight: '600',
-              marginBottom: '8px'
-            }}>
-              {file ? file.name : 'Drag & drop your crop image here'}
-            </p>
-            <p style={{ 
-              color: COLORS.text.secondary,
-              fontSize: '14px'
-            }}>
-              or click to browse files
-            </p>
-            <input 
-              ref={fileInputRef}
-              type="file" 
-              accept="image/*" 
-              onChange={handleChange}
-              style={{ display: 'none' }}
-            />
+          {/* Image Preview and Upload Area */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: imagePreview ? '1fr 1fr' : '1fr',
+            gap: '20px',
+            marginBottom: '20px'
+          }}>
+            {/* Upload Area */}
+            <div 
+              style={{
+                border: `2px dashed ${dragActive ? COLORS.primary.main : COLORS.text.light}`,
+                borderRadius: BORDER_RADIUS.medium,
+                padding: imagePreview ? '20px' : '40px 20px',
+                textAlign: 'center',
+                backgroundColor: dragActive ? 'rgba(76, 175, 80, 0.05)' : COLORS.background.card,
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: imagePreview ? '200px' : 'auto'
+              }}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {!imagePreview ? (
+                <>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>📸</div>
+                  <p style={{ 
+                    color: COLORS.text.primary, 
+                    fontWeight: '600',
+                    marginBottom: '8px'
+                  }}>
+                    Drag & drop your crop image here
+                  </p>
+                  <p style={{ 
+                    color: COLORS.text.secondary,
+                    fontSize: '14px'
+                  }}>
+                    or click to browse files
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>📁</div>
+                  <p style={{ 
+                    color: COLORS.text.primary, 
+                    fontWeight: '600',
+                    marginBottom: '4px',
+                    fontSize: '14px'
+                  }}>
+                    Click to change image
+                  </p>
+                  <p style={{ 
+                    color: COLORS.text.secondary,
+                    fontSize: '12px'
+                  }}>
+                    or drag a new one
+                  </p>
+                </>
+              )}
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept="image/*" 
+                onChange={handleChange}
+                style={{ display: 'none' }}
+              />
+            </div>
+
+            {/* Image Preview */}
+            {imagePreview && (
+              <div style={{
+                position: 'relative',
+                borderRadius: BORDER_RADIUS.medium,
+                overflow: 'hidden',
+                boxShadow: SHADOWS.small,
+                backgroundColor: COLORS.background.hover
+              }}>
+                <img 
+                  src={imagePreview} 
+                  alt="Crop preview" 
+                  style={{
+                    width: '100%',
+                    height: '200px',
+                    objectFit: 'cover',
+                    display: 'block'
+                  }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  color: 'white',
+                  borderRadius: '20px',
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  Preview
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* File Info and Actions */}
           {file && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               backgroundColor: COLORS.background.hover,
-              padding: '12px 16px',
-              borderRadius: BORDER_RADIUS.small,
-              marginBottom: '20px'
+              padding: '16px',
+              borderRadius: BORDER_RADIUS.medium,
+              marginBottom: '20px',
+              border: `1px solid ${COLORS.primary.main}15`
             }}>
-              <span style={{ 
-                color: COLORS.text.primary,
-                fontSize: '14px',
-                fontWeight: '500'
-              }}>
-                {file.name}
-              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '4px'
+                }}>
+                  <span style={{ 
+                    fontSize: '16px',
+                    marginRight: '8px'
+                  }}>
+                    📄
+                  </span>
+                  <span style={{ 
+                    color: COLORS.text.primary,
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}>
+                    {file.name}
+                  </span>
+                </div>
+                <div style={{ 
+                  color: COLORS.text.secondary,
+                  fontSize: '12px',
+                  marginLeft: '24px'
+                }}>
+                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                </div>
+              </div>
               <button 
                 type="button"
-                onClick={() => setFile(null)}
+                onClick={clearFile}
                 style={{
                   background: 'none',
                   border: 'none',
                   color: COLORS.text.light,
                   cursor: 'pointer',
-                  fontSize: '18px'
+                  fontSize: '20px',
+                  padding: '4px 8px',
+                  borderRadius: BORDER_RADIUS.small,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = 'rgba(244, 67, 54, 0.1)'
+                  e.target.style.color = COLORS.status.disease
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent'
+                  e.target.style.color = COLORS.text.light
                 }}
               >
                 ×
@@ -257,6 +429,7 @@ export default function Home() {
             </div>
           )}
 
+          {/* Submit Button */}
           <button 
             type="submit" 
             disabled={loading || !file}
@@ -290,13 +463,17 @@ export default function Home() {
           >
             {loading ? (
               <>
-                <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>
+                <span style={{ 
+                  display: 'inline-block', 
+                  animation: 'spin 1s linear infinite',
+                  marginRight: '8px'
+                }}>
                   ⏳
                 </span>
-                Identifying Crop...
+                Analyzing Crop...
               </>
             ) : (
-              'Identify Crop Type'
+              'Analyze Crop & Predict Yield'
             )}
           </button>
         </form>
@@ -305,103 +482,319 @@ export default function Home() {
         {result && (
           <div style={{ 
             marginTop: '24px',
-            padding: '24px',
-            borderRadius: BORDER_RADIUS.medium,
-            border: `1px solid ${result.error ? COLORS.status.disease : getPredictionColor(result.prediction_label)}20`,
-            backgroundColor: result.error ? '#FFEBEE10' : `${getPredictionColor(result.prediction_label)}10`,
-            boxShadow: SHADOWS.small,
             animation: 'fadeIn 0.5s ease-in-out'
           }}>
             
-            <div style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: '16px'
+            {/* Image and Results Layout */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: imagePreview ? '1fr 2fr' : '1fr',
+              gap: '20px',
+              marginBottom: '20px'
             }}>
-              <span style={{ 
-                fontSize: '24px',
-                marginRight: '12px'
-              }}>
-                {result.error ? '❌' : getStatusIcon(result.prediction_label)}
-              </span>
-              <h3 style={{ 
-                color: result.error ? COLORS.status.disease : getPredictionColor(result.prediction_label),
-                margin: 0,
-                fontSize: '18px',
-                fontWeight: '600'
-              }}>
-                {result.error ? 'Identification Failed' : 'Identification Complete'}
-              </h3>
-            </div>
-
-            {result.error ? (
-              <div>
-                <p style={{ 
-                  color: COLORS.status.disease,
-                  marginBottom: '12px',
-                  lineHeight: '1.5'
-                }}>
-                  {result.error}
-                </p>
+              {/* Image Preview in Results */}
+              {imagePreview && (
                 <div style={{
-                  backgroundColor: '#FFEBEE',
-                  padding: '12px',
-                  borderRadius: BORDER_RADIUS.small,
-                  borderLeft: `4px solid ${COLORS.status.disease}`
+                  borderRadius: BORDER_RADIUS.medium,
+                  overflow: 'hidden',
+                  boxShadow: SHADOWS.small,
+                  height: 'fit-content'
                 }}>
-                  <p style={{ 
-                    color: COLORS.text.primary,
-                    fontSize: '14px',
-                    margin: 0,
-                    fontWeight: '500'
+                  <img 
+                    src={imagePreview} 
+                    alt="Analyzed crop" 
+                    style={{
+                      width: '100%',
+                      height: '200px',
+                      objectFit: 'cover',
+                      display: 'block'
+                    }}
+                  />
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: COLORS.background.hover,
+                    textAlign: 'center',
+                    borderTop: `1px solid ${COLORS.primary.main}15`
                   }}>
-                    Troubleshooting tips:
-                  </p>
-                  <ul style={{ 
-                    color: COLORS.text.secondary,
-                    fontSize: '13px',
-                    margin: '8px 0 0 0',
-                    paddingLeft: '20px'
-                  }}>
-                    <li>Ensure the Flask server is running on port 5000</li>
-                    <li>Check your network connection</li>
-                    <li>Verify the image format is supported</li>
-                  </ul>
+                    <span style={{
+                      color: COLORS.text.secondary,
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      Uploaded Image
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div>
-                <div style={{
+              )}
+
+              {/* Crop Identification Result */}
+              <div style={{ 
+                padding: '24px',
+                borderRadius: BORDER_RADIUS.medium,
+                border: `1px solid ${result.error ? COLORS.status.disease : getPredictionColor(result.prediction_label)}20`,
+                backgroundColor: result.error ? '#FFEBEE10' : `${getPredictionColor(result.prediction_label)}10`,
+                boxShadow: SHADOWS.small
+              }}>
+                
+                <div style={{ 
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '8px'
+                  marginBottom: '16px'
                 }}>
                   <span style={{ 
-                    fontSize: '20px', 
-                    fontWeight: '700', 
-                    color: getPredictionColor(result.prediction_label)
+                    fontSize: '24px',
+                    marginRight: '12px'
                   }}>
-                    {result.prediction_label}
+                    {result.error ? '❌' : getStatusIcon(result.prediction_label)}
                   </span>
-                  <span style={{ 
-                    fontSize: '14px', 
-                    color: COLORS.text.light,
-                    backgroundColor: COLORS.background.hover,
-                    padding: '4px 8px',
-                    borderRadius: '20px'
+                  <h3 style={{ 
+                    color: result.error ? COLORS.status.disease : getPredictionColor(result.prediction_label),
+                    margin: 0,
+                    fontSize: '18px',
+                    fontWeight: '600'
                   }}>
-                    Index: {result.prediction_index}
-                  </span>
+                    {result.error ? 'Analysis Failed' : 'Crop Identification Complete'}
+                  </h3>
                 </div>
+
+                {result.error ? (
+                  <div>
+                    <p style={{ 
+                      color: COLORS.status.disease,
+                      marginBottom: '12px',
+                      lineHeight: '1.5'
+                    }}>
+                      {result.error}
+                    </p>
+                    <div style={{
+                      backgroundColor: '#FFEBEE',
+                      padding: '12px',
+                      borderRadius: BORDER_RADIUS.small,
+                      borderLeft: `4px solid ${COLORS.status.disease}`
+                    }}>
+                      <p style={{ 
+                        color: COLORS.text.primary,
+                        fontSize: '14px',
+                        margin: 0,
+                        fontWeight: '500'
+                      }}>
+                        Troubleshooting tips:
+                      </p>
+                      <ul style={{ 
+                        color: COLORS.text.secondary,
+                        fontSize: '13px',
+                        margin: '8px 0 0 0',
+                        paddingLeft: '20px'
+                      }}>
+                        <li>Ensure the Flask server is running on port 5000</li>
+                        <li>Check your network connection</li>
+                        <li>Verify the image format is supported</li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '8px'
+                    }}>
+                      <span style={{ 
+                        fontSize: '20px', 
+                        fontWeight: '700', 
+                        color: getPredictionColor(result.prediction_label)
+                      }}>
+                        {result.prediction_label}
+                      </span>
+                      <span style={{ 
+                        fontSize: '14px', 
+                        color: COLORS.text.light,
+                        backgroundColor: COLORS.background.hover,
+                        padding: '4px 8px',
+                        borderRadius: '20px'
+                      }}>
+                        Index: {result.prediction_index}
+                      </span>
+                    </div>
+                    
+                    <p style={{ 
+                      fontSize: '14px', 
+                      color: COLORS.text.secondary,
+                      margin: 0
+                    }}>
+                      The AI model has successfully identified your crop type.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Yield Prediction Section - Only show if no error */}
+            {!result.error && result.yieldPrediction && (
+              <div style={{ 
+                padding: '24px',
+                borderRadius: BORDER_RADIUS.medium,
+                border: `1px solid ${COLORS.secondary.main}20`,
+                backgroundColor: `${COLORS.secondary.main}08`,
+                boxShadow: SHADOWS.small
+              }}>
                 
-                <p style={{ 
-                  fontSize: '14px', 
-                  color: COLORS.text.secondary,
-                  margin: 0
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '20px'
                 }}>
-                  The AI model has identified your crop as shown above.
-                </p>
+                  <span style={{ 
+                    fontSize: '24px',
+                    marginRight: '12px'
+                  }}>
+                    📊
+                  </span>
+                  <h3 style={{ 
+                    color: COLORS.secondary.main,
+                    margin: 0,
+                    fontSize: '18px',
+                    fontWeight: '600'
+                  }}>
+                    Yield Prediction & Cultivation Insights
+                  </h3>
+                </div>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: '16px',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{
+                    backgroundColor: COLORS.background.card,
+                    padding: '16px',
+                    borderRadius: BORDER_RADIUS.small,
+                    border: `1px solid ${COLORS.primary.main}15`
+                  }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      marginBottom: '8px' 
+                    }}>
+                      <span style={{ fontSize: '20px', marginRight: '8px' }}>
+                        {result.yieldPrediction.icon}
+                      </span>
+                      <span style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: COLORS.text.primary
+                      }}>
+                        Average Yield
+                      </span>
+                    </div>
+                    <p style={{ 
+                      fontSize: '18px', 
+                      fontWeight: '700',
+                      color: COLORS.primary.main,
+                      margin: 0
+                    }}>
+                      {result.yieldPrediction.averageYield}
+                    </p>
+                  </div>
+
+                  <div style={{
+                    backgroundColor: COLORS.background.card,
+                    padding: '16px',
+                    borderRadius: BORDER_RADIUS.small,
+                    border: `1px solid ${COLORS.primary.main}15`
+                  }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      marginBottom: '8px' 
+                    }}>
+                      <span style={{ fontSize: '20px', marginRight: '8px' }}>💧</span>
+                      <span style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: COLORS.text.primary
+                      }}>
+                        Water Requirements
+                      </span>
+                    </div>
+                    <p style={{ 
+                      fontSize: '16px', 
+                      fontWeight: '600',
+                      color: COLORS.text.primary,
+                      margin: 0
+                    }}>
+                      {result.yieldPrediction.waterRequirements}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: '16px'
+                }}>
+                  <div style={{
+                    backgroundColor: COLORS.background.card,
+                    padding: '16px',
+                    borderRadius: BORDER_RADIUS.small,
+                    border: `1px solid ${COLORS.primary.main}15`
+                  }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      marginBottom: '8px' 
+                    }}>
+                      <span style={{ fontSize: '20px', marginRight: '8px' }}>🌤️</span>
+                      <span style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: COLORS.text.primary
+                      }}>
+                        Growing Season
+                      </span>
+                    </div>
+                    <p style={{ 
+                      fontSize: '16px', 
+                      fontWeight: '600',
+                      color: COLORS.text.primary,
+                      margin: 0
+                    }}>
+                      {result.yieldPrediction.season}
+                    </p>
+                  </div>
+
+                  <div style={{
+                    backgroundColor: COLORS.background.card,
+                    padding: '16px',
+                    borderRadius: BORDER_RADIUS.small,
+                    border: `1px solid ${COLORS.primary.main}15`
+                  }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      marginBottom: '8px' 
+                    }}>
+                      <span style={{ fontSize: '20px', marginRight: '8px' }}>🌱</span>
+                      <span style={{ 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: COLORS.text.primary
+                      }}>
+                        Optimal Conditions
+                      </span>
+                    </div>
+                    <p style={{ 
+                      fontSize: '14px', 
+                      color: COLORS.text.secondary,
+                      margin: 0,
+                      lineHeight: '1.4'
+                    }}>
+                      {result.yieldPrediction.optimalConditions}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
