@@ -68,7 +68,7 @@ const YIELD_DATA = {
   },
   "Wheat": {
     averageYield: "3.0-4.5 tons/ha",
-    optimalConditions: "Temperate climate, fertile soil",
+    optimalConditions: "fertile soil",
     season: "Winter/Spring",
     waterRequirements: "Moderate",
     icon: "🌾"
